@@ -5,6 +5,66 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Order status · QuickBite</title>
   <link rel="stylesheet" href="/style.css">
+  <style>
+    form {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    input {
+      flex: 1;
+      padding: 0.5rem;
+      border: 1px solid var(--color-border);
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+
+    .steps {
+      display: flex;
+      list-style: none;
+      padding: 0;
+      margin: 1rem 0;
+      gap: 0.25rem;
+    }
+
+    .steps li {
+      flex: 1;
+      text-align: center;
+      padding: 0.5rem 0.25rem;
+      font-size: 0.85rem;
+      border-radius: 4px;
+      background: var(--color-bg);
+      color: var(--color-muted);
+    }
+
+    .steps li.done {
+      background: #ffe8cc;
+      color: var(--color-text);
+    }
+
+    .steps li.current {
+      background: var(--color-primary);
+      color: white;
+      font-weight: bold;
+    }
+
+    .error {
+      color: #c92a2a;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    td {
+      padding: 0.25rem 0;
+    }
+
+    td:last-child {
+      text-align: end;
+    }
+  </style>
 </head>
 <body>
   <header>
@@ -17,8 +77,123 @@
   </header>
   <main>
     <h1>Order status</h1>
-    <!-- TODO PBI-09 customer order status (Karam) -->
-    <p class="muted">Coming soon: PBI-09 customer order status (Karam)</p>
+
+    <form id="lookup" class="card">
+      <input id="order-id" name="id" placeholder="Enter your order number, e.g. 1001" required aria-label="Order number">
+      <button type="submit">Check status</button>
+    </form>
+
+    <p id="message" role="status"></p>
+
+    <section id="order" class="card" hidden>
+      <h2>Order #<span id="order-number"></span></h2>
+      <p class="muted">From <strong id="restaurant"></strong></p>
+
+      <ol class="steps" id="steps"></ol>
+
+      <p>Current status: <strong id="status"></strong></p>
+      <p>Pickup time: <strong id="pickup-time"></strong></p>
+
+      <table id="items"></table>
+      <p>Total: <strong id="total"></strong></p>
+
+      <button id="refresh" type="button">Refresh status</button>
+      <p class="muted" id="last-checked"></p>
+    </section>
   </main>
+
+  <script>
+    // Same order as STATUSES in src/store.js
+    const STATUSES = ['Received', 'Preparing', 'Ready for Pickup', 'Completed'];
+
+    const form = document.getElementById('lookup');
+    const input = document.getElementById('order-id');
+    const message = document.getElementById('message');
+    const orderSection = document.getElementById('order');
+
+    function formatMoney(cents) {
+      return '$' + (cents / 100).toFixed(2);
+    }
+
+    function formatTime(isoString) {
+      return new Date(isoString).toLocaleString([], {
+        weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+      });
+    }
+
+    function showMessage(text, isError) {
+      message.textContent = text;
+      message.className = isError ? 'error' : 'muted';
+    }
+
+    function showOrder(order) {
+      document.getElementById('order-number').textContent = order.id;
+      document.getElementById('restaurant').textContent = order.restaurantName;
+      document.getElementById('status').textContent = order.status;
+      document.getElementById('pickup-time').textContent = formatTime(order.pickupTime);
+      document.getElementById('total').textContent = formatMoney(order.totalCents);
+
+      // Progress bar: earlier steps are done, the current one is highlighted
+      const steps = document.getElementById('steps');
+      steps.innerHTML = '';
+      const currentIndex = STATUSES.indexOf(order.status);
+      STATUSES.forEach((status, index) => {
+        const li = document.createElement('li');
+        li.textContent = status;
+        if (index < currentIndex) li.className = 'done';
+        if (index === currentIndex) li.className = 'current';
+        steps.append(li);
+      });
+
+      const items = document.getElementById('items');
+      items.innerHTML = '';
+      for (const item of order.items) {
+        const row = items.insertRow();
+        row.insertCell().textContent = item.quantity + ' × ' + item.name;
+        row.insertCell().textContent = formatMoney(item.priceCents * item.quantity);
+      }
+
+      document.getElementById('last-checked').textContent = 'Last checked ' + new Date().toLocaleTimeString();
+      orderSection.hidden = false;
+    }
+
+    async function loadOrder(id) {
+      showMessage('Loading…', false);
+      orderSection.hidden = true;
+      try {
+        const res = await fetch('/api/orders/' + encodeURIComponent(id));
+        if (res.status === 404) {
+          showMessage('Order "' + id + '" not found. Check the number on your confirmation.', true);
+          return;
+        }
+        if (!res.ok) {
+          throw new Error('Server error ' + res.status);
+        }
+        showMessage('', false);
+        showOrder(await res.json());
+      } catch (err) {
+        showMessage('Could not load the order. Please try again.', true);
+      }
+    }
+
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const id = input.value.trim();
+      // Put the ID in the URL so a browser refresh or a shared link shows the same order
+      history.replaceState(null, '', '?id=' + encodeURIComponent(id));
+      loadOrder(id);
+    });
+
+    document.getElementById('refresh').addEventListener('click', () => {
+      loadOrder(input.value.trim());
+    });
+
+    // The confirmation page can link here as /status.html?id=1001
+    const idFromUrl = new URLSearchParams(location.search).get('id');
+    if (idFromUrl) {
+      input.value = idFromUrl;
+      loadOrder(idFromUrl);
+    }
+  </script>
 </body>
 </html>
