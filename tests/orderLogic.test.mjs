@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {STATUSES,nextStatus,updateStatus,ordersForRestaurant,orderTotal} from '../orderLogic.mjs';
+const order={id:'1',restaurantId:'A',status:'Received',pickupTime:'2026-10-20T10:30:00Z',items:[{name:'Burger',quantity:2,price:8.5}]};
+test('all four statuses have correct order',()=>assert.deepEqual(STATUSES,['Received','Preparing','Ready for Pickup','Completed']));
+test('advances exactly one step',()=>assert.equal(updateStatus(order,'Preparing').status,'Preparing'));
+test('cannot skip a status',()=>assert.throws(()=>updateStatus(order,'Ready for Pickup'),/Invalid status/));
+test('cannot go backwards',()=>assert.throws(()=>updateStatus({...order,status:'Preparing'},'Received'),/Invalid status/));
+test('cannot advance completed',()=>assert.equal(nextStatus('Completed'),null));
+test('filters orders to selected restaurant',()=>assert.equal(ordersForRestaurant([order,{...order,id:'2',restaurantId:'B'}],'A').length,1));
+test('sorts pickup times ascending',()=>assert.deepEqual(ordersForRestaurant([{...order,id:'later',pickupTime:'2026-10-20T11:00:00Z'},{...order,id:'earlier',pickupTime:'2026-10-20T09:00:00Z'}],'A').map(o=>o.id),['earlier','later']));
+test('computes subtotal from quantity and price',()=>assert.equal(orderTotal(order),17));
