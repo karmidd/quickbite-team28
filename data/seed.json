@@ -1,0 +1,53 @@
+{
+  "restaurants": [
+    { "id": "r1", "name": "Le Petit Bistro", "cuisine": "French", "address": "1450 Rue Sainte-Catherine O" },
+    { "id": "r2", "name": "Sakura Ramen", "cuisine": "Japanese", "address": "2020 Rue Guy" },
+    { "id": "r3", "name": "Beirut Grill", "cuisine": "Lebanese", "address": "1600 Boul. de Maisonneuve O" }
+  ],
+  "menuItems": [
+    { "id": "m1", "restaurantId": "r1", "name": "Croque Monsieur", "description": "Ham and gruyère sandwich with béchamel", "priceCents": 1295 },
+    { "id": "m2", "restaurantId": "r1", "name": "French Onion Soup", "description": "Caramelized onion broth topped with melted cheese", "priceCents": 995 },
+    { "id": "m3", "restaurantId": "r1", "name": "Quiche Lorraine", "description": "Bacon and egg tart with a side salad", "priceCents": 1395 },
+    { "id": "m4", "restaurantId": "r1", "name": "Steak Frites", "description": "Grilled flank steak with fries and peppercorn sauce", "priceCents": 2495 },
+    { "id": "m5", "restaurantId": "r1", "name": "Crème Brûlée", "description": "Vanilla custard with a caramelized sugar top", "priceCents": 795 },
+
+    { "id": "m6", "restaurantId": "r2", "name": "Tonkotsu Ramen", "description": "Pork bone broth, chashu, soft egg and noodles", "priceCents": 1695 },
+    { "id": "m7", "restaurantId": "r2", "name": "Miso Ramen", "description": "Miso broth with corn, bean sprouts and chashu", "priceCents": 1595 },
+    { "id": "m8", "restaurantId": "r2", "name": "Vegetable Gyoza", "description": "Six pan-fried dumplings with dipping sauce", "priceCents": 795 },
+    { "id": "m9", "restaurantId": "r2", "name": "Chicken Karaage", "description": "Japanese fried chicken with spicy mayo", "priceCents": 995 },
+    { "id": "m10", "restaurantId": "r2", "name": "Matcha Mochi", "description": "Two green tea mochi ice cream balls", "priceCents": 595 },
+
+    { "id": "m11", "restaurantId": "r3", "name": "Chicken Shawarma Plate", "description": "Marinated chicken, garlic sauce, rice and salad", "priceCents": 1795 },
+    { "id": "m12", "restaurantId": "r3", "name": "Falafel Wrap", "description": "Falafel, tahini, pickles and vegetables in pita", "priceCents": 1095 },
+    { "id": "m13", "restaurantId": "r3", "name": "Hummus", "description": "Chickpea and tahini dip with warm pita", "priceCents": 695 },
+    { "id": "m14", "restaurantId": "r3", "name": "Fattoush", "description": "Lebanese salad with sumac and crispy pita", "priceCents": 895 },
+    { "id": "m15", "restaurantId": "r3", "name": "Baklava", "description": "Three pieces of pistachio phyllo pastry", "priceCents": 595 }
+  ],
+  "orders": [
+    {
+      "id": "1001",
+      "restaurantId": "r3",
+      "customerName": "Sample Customer",
+      "items": [
+        { "menuItemId": "m11", "name": "Chicken Shawarma Plate", "priceCents": 1795, "quantity": 2 },
+        { "menuItemId": "m13", "name": "Hummus", "priceCents": 695, "quantity": 1 }
+      ],
+      "totalCents": 4285,
+      "pickupTime": "2026-10-25T18:00:00.000Z",
+      "status": "Received",
+      "createdAt": "2026-10-19T12:00:00.000Z"
+    },
+    {
+      "id": "1002",
+      "restaurantId": "r3",
+      "customerName": "Sample Customer",
+      "items": [
+        { "menuItemId": "m12", "name": "Falafel Wrap", "priceCents": 1095, "quantity": 1 }
+      ],
+      "totalCents": 1095,
+      "pickupTime": "2026-10-25T17:30:00.000Z",
+      "status": "Preparing",
+      "createdAt": "2026-10-19T12:05:00.000Z"
+    }
+  ]
+}

@@ -147,3 +147,7 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Live app data (created from data/seed.json at runtime)
+data/db.json
+data/test-*.json

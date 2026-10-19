@@ -1,0 +1,35 @@
+{
+  "name": "quickbite-team28",
+  "version": "1.0.0",
+  "description": "QuickBite restaurant pickup platform: COMP 354 Assignment 2, Team 28",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "vitest run",
+    "reset-db": "node scripts/reset-db.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/karmidd/quickbite-team28.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/karmidd/quickbite-team28/issues"
+  },
+  "homepage": "https://github.com/karmidd/quickbite-team28#readme",
+  "dependencies": {
+    "express": "^5.3.0"
+  },
+  "devDependencies": {
+    "supertest": "^7.3.1",
+    "vitest": "^5.0.5"
+  },
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  }
+}
