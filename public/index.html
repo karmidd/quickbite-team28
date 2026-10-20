@@ -5,6 +5,45 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Restaurants · QuickBite</title>
   <link rel="stylesheet" href="/style.css">
+  <style>
+    .restaurants {
+      list-style: none;
+      padding: 0;
+    }
+
+    .restaurants a {
+      display: block;
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .restaurants a:hover,
+    .restaurants a:focus-visible {
+      border-color: var(--color-primary);
+    }
+
+    .restaurants h2 {
+      margin: 0 0 0.25rem;
+      font-size: 1.15rem;
+    }
+
+    .restaurants p {
+      margin: 0;
+    }
+
+    .cuisine {
+      display: inline-block;
+      margin-block-end: 0.25rem;
+      padding: 0.1rem 0.5rem;
+      border-radius: 4px;
+      background: #ffe8cc;
+      font-size: 0.85rem;
+    }
+
+    .error {
+      color: #c92a2a;
+    }
+  </style>
 </head>
 <body>
   <header>
@@ -17,8 +56,64 @@
   </header>
   <main>
     <h1>Restaurants</h1>
-    <!-- TODO PBI-02 restaurant list (Mayar) -->
-    <p class="muted">Coming soon: PBI-02 restaurant list (Mayar)</p>
+    <p class="muted">Choose a restaurant to see its menu and order for pickup.</p>
+
+    <p id="message" role="status" class="muted">Loading restaurants…</p>
+    <ul id="restaurants" class="restaurants"></ul>
   </main>
+
+  <script>
+    const message = document.getElementById('message');
+    const list = document.getElementById('restaurants');
+
+    function showMessage(text, isError) {
+      message.textContent = text;
+      message.className = isError ? 'error' : 'muted';
+      message.hidden = !text;
+    }
+
+    function showRestaurants(restaurants) {
+      list.innerHTML = '';
+      if (restaurants.length === 0) {
+        showMessage('No restaurants are taking orders right now. Please check back later!', false);
+        return;
+      }
+      showMessage('', false);
+
+      for (const restaurant of restaurants) {
+        const link = document.createElement('a');
+        link.className = 'card';
+        link.href = '/menu.html?id=' + encodeURIComponent(restaurant.id);
+
+        const name = document.createElement('h2');
+        name.textContent = restaurant.name;
+        const cuisine = document.createElement('span');
+        cuisine.className = 'cuisine';
+        cuisine.textContent = restaurant.cuisine;
+        const address = document.createElement('p');
+        address.className = 'muted';
+        address.textContent = restaurant.address;
+
+        link.append(name, cuisine, address);
+        const li = document.createElement('li');
+        li.append(link);
+        list.append(li);
+      }
+    }
+
+    async function loadRestaurants() {
+      try {
+        const res = await fetch('/api/restaurants');
+        if (!res.ok) {
+          throw new Error('Server error ' + res.status);
+        }
+        showRestaurants(await res.json());
+      } catch (err) {
+        showMessage('Could not load restaurants. Please refresh the page to try again.', true);
+      }
+    }
+
+    loadRestaurants();
+  </script>
 </body>
 </html>
