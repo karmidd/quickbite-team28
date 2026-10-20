@@ -14,6 +14,16 @@ app.get('/api/restaurants', (req, res) => {
   res.json(db.restaurants);
 });
 
+// PBI-03: menu items for one restaurant (404 if the restaurant is unknown)
+app.get('/api/restaurants/:id/menu', (req, res) => {
+  const db = loadDb();
+  const restaurant = db.restaurants.find((r) => r.id === req.params.id);
+  if (!restaurant) {
+    return res.status(404).json({ error: 'Restaurant not found' });
+  }
+  res.json(db.menuItems.filter((item) => item.restaurantId === restaurant.id));
+});
+
 // PBI-09: one order, for the customer's status page
 app.get('/api/orders/:id', (req, res) => {
   const db = loadDb();

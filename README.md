@@ -65,7 +65,7 @@ status names by hand.
 | Route | PBI | Does |
 |---|---|---|
 | `GET /api/restaurants` | 02 | List restaurants ✅ |
-| `GET /api/restaurants/:id/menu` | 03 | Menu items for one restaurant |
+| `GET /api/restaurants/:id/menu` | 03 | Menu items for one restaurant (404 if unknown) ✅ |
 | `POST /api/orders` | 06 | Create an order (status starts as `Received`) |
 | `GET /api/orders/:id` | 09 | One order (404 if unknown) ✅ |
 | `GET /api/restaurants/:id/orders` | 07 | A restaurant's orders, sorted by pickup time |
