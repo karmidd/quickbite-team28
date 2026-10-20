@@ -5,6 +5,37 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Menu · QuickBite</title>
   <link rel="stylesheet" href="/style.css">
+  <style>
+    .menu {
+      list-style: none;
+      padding: 0;
+    }
+
+    .menu li {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .menu h2 {
+      margin: 0 0 0.25rem;
+      font-size: 1.1rem;
+    }
+
+    .menu p {
+      margin: 0;
+    }
+
+    .price {
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    .error {
+      color: #c92a2a;
+    }
+  </style>
 </head>
 <body>
   <header>
@@ -16,9 +47,96 @@
     </nav>
   </header>
   <main>
-    <h1>Menu</h1>
-    <!-- TODO PBI-03 restaurant menu (Mayar) -->
-    <p class="muted">Coming soon: PBI-03 restaurant menu (Mayar)</p>
+    <p><a href="/">← All restaurants</a></p>
+    <h1 id="restaurant-name">Menu</h1>
+    <p class="muted" id="restaurant-details"></p>
+
+    <p id="message" role="status" class="muted">Loading menu…</p>
+    <ul id="menu" class="menu"></ul>
   </main>
+
+  <script>
+    const message = document.getElementById('message');
+    const menu = document.getElementById('menu');
+
+    function formatMoney(cents) {
+      return '$' + (cents / 100).toFixed(2);
+    }
+
+    function showMessage(text, isError) {
+      message.textContent = text;
+      message.className = isError ? 'error' : 'muted';
+      message.hidden = !text;
+    }
+
+    function showRestaurant(restaurant) {
+      document.title = restaurant.name + ' · QuickBite';
+      document.getElementById('restaurant-name').textContent = restaurant.name;
+      document.getElementById('restaurant-details').textContent = restaurant.cuisine + ' · ' + restaurant.address;
+    }
+
+    function showMenu(items) {
+      menu.innerHTML = '';
+      if (items.length === 0) {
+        showMessage('This restaurant has no items on its menu yet.', false);
+        return;
+      }
+      showMessage('', false);
+
+      for (const item of items) {
+        const li = document.createElement('li');
+        li.className = 'card';
+        // The cart (PBI-04) can find each item by this ID
+        li.dataset.menuItemId = item.id;
+
+        const text = document.createElement('div');
+        const name = document.createElement('h2');
+        name.textContent = item.name;
+        const description = document.createElement('p');
+        description.className = 'muted';
+        description.textContent = item.description;
+        text.append(name, description);
+
+        const price = document.createElement('span');
+        price.className = 'price';
+        price.textContent = formatMoney(item.priceCents);
+
+        li.append(text, price);
+        menu.append(li);
+      }
+    }
+
+    async function loadMenu(restaurantId) {
+      try {
+        const [restaurantsRes, menuRes] = await Promise.all([
+          fetch('/api/restaurants'),
+          fetch('/api/restaurants/' + encodeURIComponent(restaurantId) + '/menu')
+        ]);
+        if (menuRes.status === 404) {
+          showMessage('Restaurant not found. Please pick one from the restaurant list.', true);
+          return;
+        }
+        if (!restaurantsRes.ok || !menuRes.ok) {
+          throw new Error('Server error');
+        }
+        const restaurants = await restaurantsRes.json();
+        const restaurant = restaurants.find((r) => r.id === restaurantId);
+        if (restaurant) {
+          showRestaurant(restaurant);
+        }
+        showMenu(await menuRes.json());
+      } catch (err) {
+        showMessage('Could not load the menu. Please refresh the page to try again.', true);
+      }
+    }
+
+    // The restaurant list links here as /menu.html?id=r1
+    const restaurantId = new URLSearchParams(location.search).get('id');
+    if (restaurantId) {
+      loadMenu(restaurantId);
+    } else {
+      showMessage('No restaurant selected. Please pick one from the restaurant list.', true);
+    }
+  </script>
 </body>
 </html>
