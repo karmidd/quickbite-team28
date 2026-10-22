@@ -25,6 +25,19 @@ app.get('/api/restaurants/:id/menu', (req, res) => {
   res.json(db.menuItems.filter((item) => item.restaurantId === restaurant.id));
 });
 
+// PBI-07: a restaurant's orders, soonest pickup first (404 if the restaurant is unknown)
+app.get('/api/restaurants/:id/orders', (req, res) => {
+  const db = loadDb();
+  const restaurant = db.restaurants.find((r) => r.id === req.params.id);
+  if (!restaurant) {
+    return res.status(404).json({ error: 'Restaurant not found' });
+  }
+  const orders = db.orders
+    .filter((o) => o.restaurantId === restaurant.id)
+    .sort((a, b) => new Date(a.pickupTime) - new Date(b.pickupTime));
+  res.json(orders);
+});
+
 // PBI-06: create an order after validating all client-provided IDs and quantities
 app.post('/api/orders', (req, res) => {
   const { restaurantId, customerName, items, pickupTime } = req.body || {};
@@ -112,4 +125,24 @@ app.get('/api/orders/:id', (req, res) => {
   }
   const restaurant = db.restaurants.find((r) => r.id === order.restaurantId);
   res.json({ ...order, restaurantName: restaurant ? restaurant.name : null });
+});
+
+// PBI-08: move an order's status forward exactly one step
+app.patch('/api/orders/:id/status', (req, res) => {
+  const db = loadDb();
+  const order = db.orders.find((o) => o.id === req.params.id);
+  if (!order) {
+    return res.status(404).json({ error: 'Order not found' });
+  }
+  const { status } = req.body || {};
+  const nextStatus = STATUSES[STATUSES.indexOf(order.status) + 1];
+  if (!nextStatus) {
+    return res.status(400).json({ error: 'This order is already completed.' });
+  }
+  if (status !== nextStatus) {
+    return res.status(400).json({ error: `Status can only move from ${order.status} to ${nextStatus}.` });
+  }
+  order.status = status;
+  saveDb(db);
+  res.json(order);
 });
