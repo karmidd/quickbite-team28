@@ -5,6 +5,40 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Restaurant dashboard · QuickBite</title>
   <link rel="stylesheet" href="/style.css">
+  <style>
+    select {
+      padding: 0.5rem;
+      border: 1px solid var(--color-border);
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+
+    .order-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .order-head h2 {
+      margin: 0;
+    }
+
+    .badge {
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      background: #ffe8cc;
+      font-size: 0.85rem;
+    }
+
+    .order-items {
+      padding-inline-start: 1.25rem;
+    }
+
+    .error {
+      color: #c92a2a;
+    }
+  </style>
 </head>
 <body>
   <header>
@@ -17,8 +51,131 @@
   </header>
   <main>
     <h1>Restaurant dashboard</h1>
-    <!-- TODO PBI-07/08 incoming orders and status updates (Roman) -->
-    <p class="muted">Coming soon: PBI-07/08 incoming orders and status updates (Roman)</p>
+
+    <div class="card">
+      <label for="restaurant">Restaurant</label>
+      <select id="restaurant"></select>
+      <button id="refresh" type="button">Refresh orders</button>
+    </div>
+
+    <p id="message" role="status"></p>
+    <section id="orders"></section>
   </main>
+
+  <script>
+    // Same order as STATUSES in src/store.js
+    const STATUSES = ['Received', 'Preparing', 'Ready for Pickup', 'Completed'];
+
+    const select = document.getElementById('restaurant');
+    const message = document.getElementById('message');
+    const ordersSection = document.getElementById('orders');
+
+    function formatTime(isoString) {
+      return new Date(isoString).toLocaleString([], {
+        weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+      });
+    }
+
+    function showMessage(text, isError) {
+      message.textContent = text;
+      message.className = isError ? 'error' : 'muted';
+    }
+
+    function renderOrder(order) {
+      const card = document.createElement('article');
+      card.className = 'card';
+
+      const head = document.createElement('div');
+      head.className = 'order-head';
+      const title = document.createElement('h2');
+      title.textContent = 'Order #' + order.id + ' · ' + order.customerName;
+      const badge = document.createElement('span');
+      badge.className = 'badge';
+      badge.textContent = order.status;
+      head.append(title, badge);
+
+      const pickup = document.createElement('p');
+      pickup.innerHTML = 'Pickup: <strong></strong>';
+      pickup.querySelector('strong').textContent = formatTime(order.pickupTime);
+
+      const items = document.createElement('ul');
+      items.className = 'order-items';
+      for (const item of order.items) {
+        const li = document.createElement('li');
+        li.textContent = item.quantity + ' × ' + item.name;
+        items.append(li);
+      }
+
+      card.append(head, pickup, items);
+
+      // Only the next status is offered, so steps cannot be skipped or reversed
+      const nextStatus = STATUSES[STATUSES.indexOf(order.status) + 1];
+      if (nextStatus) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = 'Mark as ' + nextStatus;
+        button.addEventListener('click', () => updateStatus(order.id, nextStatus, button));
+        card.append(button);
+      }
+      return card;
+    }
+
+    async function loadOrders() {
+      showMessage('Loading…', false);
+      try {
+        const res = await fetch('/api/restaurants/' + encodeURIComponent(select.value) + '/orders');
+        if (!res.ok) throw new Error('Server error ' + res.status);
+        const orders = await res.json();
+        ordersSection.innerHTML = '';
+        if (orders.length === 0) {
+          showMessage('No orders yet.', false);
+          return;
+        }
+        showMessage('', false);
+        orders.forEach((order) => ordersSection.append(renderOrder(order)));
+      } catch (err) {
+        showMessage('Could not load orders. Please try again.', true);
+      }
+    }
+
+    async function updateStatus(id, status, button) {
+      button.disabled = true;
+      try {
+        const res = await fetch('/api/orders/' + encodeURIComponent(id) + '/status', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status })
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || 'Server error ' + res.status);
+        }
+        await loadOrders();
+      } catch (err) {
+        showMessage(err.message, true);
+        button.disabled = false;
+      }
+    }
+
+    async function loadRestaurants() {
+      const res = await fetch('/api/restaurants');
+      const restaurants = await res.json();
+      for (const r of restaurants) {
+        select.append(new Option(r.name, r.id));
+      }
+      // Remember the restaurant in the URL so a refresh keeps the same dashboard
+      const idFromUrl = new URLSearchParams(location.search).get('restaurant');
+      if (idFromUrl) select.value = idFromUrl;
+      loadOrders();
+    }
+
+    select.addEventListener('change', () => {
+      history.replaceState(null, '', '?restaurant=' + encodeURIComponent(select.value));
+      loadOrders();
+    });
+    document.getElementById('refresh').addEventListener('click', loadOrders);
+
+    loadRestaurants();
+  </script>
 </body>
 </html>
