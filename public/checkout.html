@@ -40,11 +40,36 @@
         <strong id="selected-pickup-time"></strong>
       </div>
       <p><a id="add-more-link" href="/">Add more items</a></p>
+      <form id="order-form" class="card order-form" novalidate>
+        <h3>Place your order</h3>
+        <label for="customer-name">Customer name</label>
+        <input id="customer-name" name="customerName" type="text" autocomplete="name" required>
+        <p id="order-message" class="validation-message" role="alert"></p>
+        <button id="place-order-button" type="submit">Place order</button>
+      </form>
     </section>
     <section id="empty-cart" class="card" hidden>
       <h2>Your cart is empty</h2>
       <p class="muted">Choose a restaurant and add some menu items to get started.</p>
       <a href="/">Browse restaurants</a>
+    </section>
+    <section id="order-confirmation" class="card confirmation" hidden>
+      <h2>Order confirmed!</h2>
+      <p>Your order has been sent to the restaurant.</p>
+      <dl class="confirmation-details">
+        <div><dt>Order ID</dt><dd id="confirmation-order-id"></dd></div>
+        <div><dt>Restaurant</dt><dd id="confirmation-restaurant"></dd></div>
+        <div><dt>Pickup time</dt><dd id="confirmation-pickup-time"></dd></div>
+        <div><dt>Status</dt><dd id="confirmation-status"></dd></div>
+      </dl>
+      <h3>Items</h3>
+      <ul id="confirmation-items" class="confirmation-items"></ul>
+      <div class="cart-total">
+        <strong>Total</strong>
+        <strong id="confirmation-total"></strong>
+      </div>
+      <p><a id="track-order-link" href="/status.html">Track this order</a></p>
+      <p><a href="/">Order from another restaurant</a></p>
     </section>
   </main>
 
@@ -68,6 +93,13 @@
     const pickupMessage = document.getElementById('pickup-message');
     const pickupSummary = document.getElementById('pickup-summary');
     const selectedPickupTime = document.getElementById('selected-pickup-time');
+    const orderForm = document.getElementById('order-form');
+    const customerName = document.getElementById('customer-name');
+    const orderMessage = document.getElementById('order-message');
+    const placeOrderButton = document.getElementById('place-order-button');
+    const orderConfirmation = document.getElementById('order-confirmation');
+    let submittingOrder = false;
+    let orderPlaced = false;
 
     function formatMoney(cents) {
       return '$' + (cents / 100).toFixed(2);
@@ -213,6 +245,96 @@
       }
     });
 
+    function renderConfirmation(order) {
+      cartSection.hidden = true;
+      emptyCart.hidden = true;
+      orderConfirmation.hidden = false;
+      document.getElementById('confirmation-order-id').textContent = order.id;
+      document.getElementById('confirmation-restaurant').textContent = order.restaurantName;
+      document.getElementById('confirmation-pickup-time').textContent =
+        formatPickupTime(order.pickupTime);
+      document.getElementById('confirmation-status').textContent = order.status;
+      document.getElementById('confirmation-total').textContent = formatMoney(order.totalCents);
+      document.getElementById('track-order-link').href =
+        '/status.html?id=' + encodeURIComponent(order.id);
+
+      const confirmationItems = document.getElementById('confirmation-items');
+      confirmationItems.replaceChildren();
+      for (const item of order.items) {
+        const row = document.createElement('li');
+        const description = document.createElement('span');
+        description.textContent = `${item.quantity} × ${item.name}`;
+        const lineTotal = document.createElement('strong');
+        lineTotal.textContent = formatMoney(item.priceCents * item.quantity);
+        row.append(description, lineTotal);
+        confirmationItems.append(row);
+      }
+    }
+
+    orderForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (submittingOrder || orderPlaced) return;
+
+      const state = cart.getState();
+      if (state.items.length === 0 || !state.restaurantId) {
+        orderMessage.textContent = 'Your cart is empty. Add an item before placing an order.';
+        return;
+      }
+      const pickupTime = pickupSelection.getSelectedTime();
+      if (!pickupTime) {
+        orderMessage.textContent = pickupSelection.status.message;
+        showPickupMessage(pickupSelection.status.message);
+        pickupSelect.focus();
+        return;
+      }
+      const name = customerName.value.trim();
+      if (!name) {
+        orderMessage.textContent = 'Please enter your name.';
+        customerName.focus();
+        return;
+      }
+
+      submittingOrder = true;
+      orderMessage.textContent = '';
+      placeOrderButton.disabled = true;
+      placeOrderButton.textContent = 'Placing order…';
+      orderForm.setAttribute('aria-busy', 'true');
+
+      try {
+        const response = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            restaurantId: state.restaurantId,
+            customerName: name,
+            pickupTime,
+            items: state.items.map((item) => ({
+              menuItemId: item.id,
+              quantity: item.quantity
+            }))
+          })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(result.error || 'The order could not be placed. Please try again.');
+        }
+
+        orderPlaced = true;
+        cart.clear();
+        pickupSelection.clear();
+        renderConfirmation(result);
+      } catch (err) {
+        orderMessage.textContent = err.message || 'The order could not be placed. Please try again.';
+      } finally {
+        submittingOrder = false;
+        orderForm.removeAttribute('aria-busy');
+        if (!orderPlaced) {
+          placeOrderButton.disabled = false;
+          placeOrderButton.textContent = 'Place order';
+        }
+      }
+    });
+
     async function validateCart() {
       const state = cart.getState();
       if (!state.restaurantId) {
@@ -238,6 +360,7 @@
       } catch {
         message.textContent = 'Could not refresh menu prices. Showing your saved cart.';
       }
+      if (orderPlaced) return;
       renderCart();
     }
 
