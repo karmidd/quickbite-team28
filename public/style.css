@@ -122,6 +122,46 @@ button {
   padding-block: 1rem;
 }
 
+.pickup-form h3 {
+  margin-top: 0;
+}
+
+.pickup-form label,
+.pickup-form select {
+  display: block;
+}
+
+.pickup-form select {
+  background: white;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font: inherit;
+  margin-block: 0.25rem 0.75rem;
+  max-width: 24rem;
+  padding: 0.5rem;
+  width: 100%;
+}
+
+.validation-message {
+  color: #c92a2a;
+  min-height: 1.5rem;
+}
+
+.success-message {
+  color: #2b8a3e;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: 0.5rem;
+}
+
+.summary-row strong {
+  text-align: right;
+}
+
 @media (max-width: 520px) {
   .cart-row {
     align-items: flex-start;
