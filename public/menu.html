@@ -32,6 +32,12 @@
       white-space: nowrap;
     }
 
+    .menu-actions {
+      display: grid;
+      justify-items: end;
+      gap: 0.5rem;
+    }
+
     .error {
       color: #c92a2a;
     }
@@ -42,6 +48,7 @@
     <a href="/">QuickBite</a>
     <nav>
       <a href="/">Restaurants</a>
+      <a href="/checkout.html" id="cart-link">Cart (0)</a>
       <a href="/status.html">Order status</a>
       <a href="/dashboard.html">Restaurant dashboard</a>
     </nav>
@@ -52,12 +59,23 @@
     <p class="muted" id="restaurant-details"></p>
 
     <p id="message" role="status" class="muted">Loading menu…</p>
+    <div id="cart-message" role="status" class="notice" hidden></div>
     <ul id="menu" class="menu"></ul>
   </main>
 
-  <script>
+  <script type="module">
+    import { Cart, CartError } from './cart.js';
+
     const message = document.getElementById('message');
     const menu = document.getElementById('menu');
+    const cartMessage = document.getElementById('cart-message');
+    const cartLink = document.getElementById('cart-link');
+    const cart = new Cart();
+    let currentRestaurant = null;
+
+    function updateCartLink() {
+      cartLink.textContent = `Cart (${cart.itemCount})`;
+    }
 
     function formatMoney(cents) {
       return '$' + (cents / 100).toFixed(2);
@@ -73,6 +91,39 @@
       document.title = restaurant.name + ' · QuickBite';
       document.getElementById('restaurant-name').textContent = restaurant.name;
       document.getElementById('restaurant-details').textContent = restaurant.cuisine + ' · ' + restaurant.address;
+    }
+
+    function showCartMessage(text, pendingItem) {
+      cartMessage.replaceChildren();
+      cartMessage.hidden = !text;
+      if (!text) return;
+
+      cartMessage.append(document.createTextNode(text));
+      if (pendingItem) {
+        const switchButton = document.createElement('button');
+        switchButton.type = 'button';
+        switchButton.textContent = `Clear cart and switch to ${currentRestaurant.name}`;
+        switchButton.addEventListener('click', () => {
+          cart.addItem(pendingItem, currentRestaurant, { replace: true });
+          updateCartLink();
+          showCartMessage(`${pendingItem.name} was added to your new cart.`);
+        });
+        cartMessage.append(document.createElement('br'), switchButton);
+      }
+    }
+
+    function addToCart(item) {
+      try {
+        cart.addItem(item, currentRestaurant);
+        updateCartLink();
+        showCartMessage(`${item.name} added to cart.`);
+      } catch (err) {
+        if (err instanceof CartError && err.code === 'DIFFERENT_RESTAURANT') {
+          showCartMessage(`${err.message} Clear it before adding items from ${currentRestaurant.name}.`, item);
+        } else {
+          showCartMessage(err.message || 'Could not add this item to the cart.');
+        }
+      }
     }
 
     function showMenu(items) {
@@ -97,11 +148,18 @@
         description.textContent = item.description;
         text.append(name, description);
 
+        const actions = document.createElement('div');
+        actions.className = 'menu-actions';
         const price = document.createElement('span');
         price.className = 'price';
         price.textContent = formatMoney(item.priceCents);
+        const addButton = document.createElement('button');
+        addButton.type = 'button';
+        addButton.textContent = 'Add to cart';
+        addButton.addEventListener('click', () => addToCart(item));
+        actions.append(price, addButton);
 
-        li.append(text, price);
+        li.append(text, actions);
         menu.append(li);
       }
     }
@@ -122,6 +180,7 @@
         const restaurants = await restaurantsRes.json();
         const restaurant = restaurants.find((r) => r.id === restaurantId);
         if (restaurant) {
+          currentRestaurant = restaurant;
           showRestaurant(restaurant);
         }
         showMenu(await menuRes.json());
@@ -132,6 +191,7 @@
 
     // The restaurant list links here as /menu.html?id=r1
     const restaurantId = new URLSearchParams(location.search).get('id');
+    updateCartLink();
     if (restaurantId) {
       loadMenu(restaurantId);
     } else {

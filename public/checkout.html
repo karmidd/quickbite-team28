@@ -17,8 +17,132 @@
   </header>
   <main>
     <h1>Checkout</h1>
-    <!-- TODO PBI-04/05/06 cart, pickup time and place order (Nicolas) -->
-    <p class="muted">Coming soon: PBI-04/05/06 cart, pickup time and place order (Nicolas)</p>
+    <p id="cart-message" role="status" class="muted"></p>
+    <section id="cart-section" hidden>
+      <h2 id="restaurant-name"></h2>
+      <ul id="cart-items" class="cart-items"></ul>
+      <div class="cart-total">
+        <strong>Total</strong>
+        <strong id="cart-total">$0.00</strong>
+      </div>
+      <p><a id="add-more-link" href="/">Add more items</a></p>
+    </section>
+    <section id="empty-cart" class="card" hidden>
+      <h2>Your cart is empty</h2>
+      <p class="muted">Choose a restaurant and add some menu items to get started.</p>
+      <a href="/">Browse restaurants</a>
+    </section>
   </main>
+
+  <script type="module">
+    import { Cart } from './cart.js';
+
+    const cart = new Cart();
+    const cartSection = document.getElementById('cart-section');
+    const emptyCart = document.getElementById('empty-cart');
+    const message = document.getElementById('cart-message');
+    const itemList = document.getElementById('cart-items');
+
+    function formatMoney(cents) {
+      return '$' + (cents / 100).toFixed(2);
+    }
+
+    function changeQuantity(item, change) {
+      const quantity = item.quantity + change;
+      if (quantity < 1) {
+        cart.removeItem(item.id);
+      } else {
+        cart.updateQuantity(item.id, quantity);
+      }
+      renderCart();
+    }
+
+    function renderCart() {
+      const state = cart.getState();
+      const isEmpty = state.items.length === 0;
+      cartSection.hidden = isEmpty;
+      emptyCart.hidden = !isEmpty;
+      if (isEmpty) return;
+
+      document.getElementById('restaurant-name').textContent = state.restaurantName || 'Your order';
+      document.getElementById('add-more-link').href =
+        '/menu.html?id=' + encodeURIComponent(state.restaurantId);
+      document.getElementById('cart-total').textContent = formatMoney(cart.totalCents);
+      itemList.replaceChildren();
+
+      for (const item of state.items) {
+        const row = document.createElement('li');
+        row.className = 'card cart-row';
+
+        const details = document.createElement('div');
+        const name = document.createElement('h3');
+        name.textContent = item.name;
+        const price = document.createElement('p');
+        price.className = 'muted';
+        price.textContent = `${formatMoney(item.priceCents)} each · ${formatMoney(item.priceCents * item.quantity)}`;
+        details.append(name, price);
+
+        const controls = document.createElement('div');
+        controls.className = 'quantity-controls';
+        const decrease = document.createElement('button');
+        decrease.type = 'button';
+        decrease.className = 'secondary-button';
+        decrease.setAttribute('aria-label', `Decrease ${item.name} quantity`);
+        decrease.textContent = '−';
+        decrease.addEventListener('click', () => changeQuantity(item, -1));
+        const quantity = document.createElement('span');
+        quantity.setAttribute('aria-label', `${item.name} quantity`);
+        quantity.textContent = item.quantity;
+        const increase = document.createElement('button');
+        increase.type = 'button';
+        increase.className = 'secondary-button';
+        increase.setAttribute('aria-label', `Increase ${item.name} quantity`);
+        increase.textContent = '+';
+        increase.addEventListener('click', () => changeQuantity(item, 1));
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'link-button';
+        remove.textContent = 'Remove';
+        remove.addEventListener('click', () => {
+          cart.removeItem(item.id);
+          renderCart();
+        });
+        controls.append(decrease, quantity, increase, remove);
+        row.append(details, controls);
+        itemList.append(row);
+      }
+    }
+
+    async function validateCart() {
+      const state = cart.getState();
+      if (!state.restaurantId) {
+        renderCart();
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          '/api/restaurants/' + encodeURIComponent(state.restaurantId) + '/menu'
+        );
+        if (response.status === 404) {
+          cart.clear();
+          message.textContent = 'That restaurant is no longer available, so its items were removed.';
+        } else if (!response.ok) {
+          throw new Error('Server error');
+        } else {
+          const removedIds = cart.reconcile(await response.json());
+          if (removedIds.length > 0) {
+            message.textContent = 'Some unavailable menu items were removed from your cart.';
+          }
+        }
+      } catch {
+        message.textContent = 'Could not refresh menu prices. Showing your saved cart.';
+      }
+      renderCart();
+    }
+
+    renderCart();
+    validateCart();
+  </script>
 </body>
 </html>
