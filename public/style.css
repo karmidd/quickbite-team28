@@ -63,3 +63,68 @@ button {
   padding: 0.5rem 1rem;
   cursor: pointer;
 }
+
+.notice {
+  background: #fff3bf;
+  border: 1px solid #fcc419;
+  border-radius: 4px;
+  margin-block-end: 1rem;
+  padding: 0.75rem;
+}
+
+.notice button {
+  margin-block-start: 0.5rem;
+}
+
+.cart-items {
+  list-style: none;
+  padding: 0;
+}
+
+.cart-row,
+.cart-total,
+.quantity-controls {
+  display: flex;
+  align-items: center;
+}
+
+.cart-row,
+.cart-total {
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.cart-row h3,
+.cart-row p {
+  margin: 0;
+}
+
+.quantity-controls {
+  gap: 0.75rem;
+  white-space: nowrap;
+}
+
+.secondary-button {
+  min-width: 2.25rem;
+  padding: 0.35rem 0.6rem;
+}
+
+.link-button {
+  color: var(--color-primary);
+  background: transparent;
+  padding-inline: 0.25rem;
+  text-decoration: underline;
+}
+
+.cart-total {
+  border-top: 2px solid var(--color-border);
+  font-size: 1.2rem;
+  padding-block: 1rem;
+}
+
+@media (max-width: 520px) {
+  .cart-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
