@@ -21,9 +21,23 @@
     <section id="cart-section" hidden>
       <h2 id="restaurant-name"></h2>
       <ul id="cart-items" class="cart-items"></ul>
+      <form id="pickup-form" class="card pickup-form" novalidate>
+        <h3>Select a pickup time</h3>
+        <label for="pickup-time">Available times</label>
+        <select id="pickup-time" name="pickupTime" required>
+          <option value="">Choose a pickup time</option>
+        </select>
+        <p id="pickup-message" class="validation-message" role="alert"></p>
+        <button type="submit">Confirm pickup time</button>
+      </form>
+      <h3>Order summary</h3>
       <div class="cart-total">
         <strong>Total</strong>
         <strong id="cart-total">$0.00</strong>
+      </div>
+      <div id="pickup-summary" class="summary-row" hidden>
+        <span>Pickup time</span>
+        <strong id="selected-pickup-time"></strong>
       </div>
       <p><a id="add-more-link" href="/">Add more items</a></p>
     </section>
@@ -36,12 +50,24 @@
 
   <script type="module">
     import { Cart } from './cart.js';
+    import {
+      PickupTimeError,
+      PickupTimeSelection,
+      formatPickupTime,
+      generatePickupTimeSlots
+    } from './pickup-time.js';
 
     const cart = new Cart();
+    const pickupSelection = new PickupTimeSelection();
     const cartSection = document.getElementById('cart-section');
     const emptyCart = document.getElementById('empty-cart');
     const message = document.getElementById('cart-message');
     const itemList = document.getElementById('cart-items');
+    const pickupForm = document.getElementById('pickup-form');
+    const pickupSelect = document.getElementById('pickup-time');
+    const pickupMessage = document.getElementById('pickup-message');
+    const pickupSummary = document.getElementById('pickup-summary');
+    const selectedPickupTime = document.getElementById('selected-pickup-time');
 
     function formatMoney(cents) {
       return '$' + (cents / 100).toFixed(2);
@@ -57,6 +83,44 @@
       renderCart();
     }
 
+    function showPickupMessage(text, isSuccess = false) {
+      pickupMessage.textContent = text;
+      pickupMessage.className = isSuccess
+        ? 'validation-message success-message'
+        : 'validation-message';
+    }
+
+    function renderPickupSummary() {
+      const summary = pickupSelection.getSummary();
+      pickupSummary.hidden = !summary;
+      if (summary) {
+        selectedPickupTime.textContent = summary.displayTime;
+      } else if (pickupSelect.value) {
+        pickupSelect.value = '';
+        showPickupMessage(pickupSelection.status.message);
+      }
+    }
+
+    function populatePickupTimes() {
+      const selected = pickupSelection.getSelectedTime();
+      const slots = generatePickupTimeSlots();
+      if (selected && !slots.includes(selected)) slots.push(selected);
+      slots.sort();
+
+      for (const slot of slots) {
+        const option = document.createElement('option');
+        option.value = slot;
+        option.textContent = formatPickupTime(slot);
+        option.selected = slot === selected;
+        pickupSelect.append(option);
+      }
+
+      if (!pickupSelection.status.valid && pickupSelection.status.code !== 'MISSING') {
+        showPickupMessage(pickupSelection.status.message);
+      }
+      renderPickupSummary();
+    }
+
     function renderCart() {
       const state = cart.getState();
       const isEmpty = state.items.length === 0;
@@ -68,6 +132,7 @@
       document.getElementById('add-more-link').href =
         '/menu.html?id=' + encodeURIComponent(state.restaurantId);
       document.getElementById('cart-total').textContent = formatMoney(cart.totalCents);
+      renderPickupSummary();
       itemList.replaceChildren();
 
       for (const item of state.items) {
@@ -113,6 +178,41 @@
       }
     }
 
+    pickupSelect.addEventListener('change', () => {
+      if (!pickupSelect.value) {
+        pickupSelection.clear();
+        pickupSummary.hidden = true;
+        showPickupMessage('Please select a pickup time before continuing.');
+        return;
+      }
+
+      try {
+        pickupSelection.select(pickupSelect.value);
+        showPickupMessage('');
+        renderPickupSummary();
+      } catch (err) {
+        pickupSelect.value = '';
+        pickupSummary.hidden = true;
+        showPickupMessage(err.message || 'Please select a valid pickup time.');
+      }
+    });
+
+    pickupForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      try {
+        pickupSelection.select(pickupSelect.value);
+        renderPickupSummary();
+        showPickupMessage('Pickup time confirmed.', true);
+      } catch (err) {
+        const text = err instanceof PickupTimeError
+          ? err.message
+          : 'Please select a valid pickup time before continuing.';
+        pickupSummary.hidden = true;
+        showPickupMessage(text);
+        pickupSelect.focus();
+      }
+    });
+
     async function validateCart() {
       const state = cart.getState();
       if (!state.restaurantId) {
@@ -141,6 +241,7 @@
       renderCart();
     }
 
+    populatePickupTimes();
     renderCart();
     validateCart();
   </script>
